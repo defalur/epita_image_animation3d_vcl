@@ -28,6 +28,17 @@ struct scene_model : scene_base
     // Called every time the mouse is moved
     void mouse_move(scene_structure& scene, GLFWwindow* window);
 
+    vcl::vec3 cardinal_spline_interpolation(
+            float t,
+            float t0,
+            float t1,
+            float t2,
+            float t3,
+            const vcl::vec3& p0,
+            const vcl::vec3& p1,
+            const vcl::vec3& p2,
+            const vcl::vec3& p3);
+
     // Data (p_i,t_i)
     vcl::buffer<vec3t> keyframes; // Given (position,time)
 
@@ -42,6 +53,7 @@ struct scene_model : scene_base
 
     gui_scene_structure gui_scene;
     vcl::timer_interval timer;
+    float mu = 0.9;
 
 };
 

@@ -66,7 +66,18 @@ buffer<joint_geometry> interpolate_skeleton_at_time(float time, const buffer< bu
         // TO DO ...
         // Compute correct interpolation of joint geometry
         // (the following code corresponds to nearest neighbors, not to a smooth interpolation)
-        const joint_geometry current_geometry = joint_anim[k_current].geometry;
+        auto a = joint_anim[k_current];
+        auto b = joint_anim[k_current + 1];
+
+        auto t1 = a.time;
+        auto t2 = b.time;
+
+        auto T = (time - t1) / (t2 - t1);
+
+        auto rot = slerp(a.geometry.r, b.geometry.r, T);
+        auto pos = a.geometry.p * (1 - T) + b.geometry.p * T;
+
+        const joint_geometry current_geometry = joint_geometry{pos, rot};
 
         skeleton[k_joint] = current_geometry;
     }
@@ -84,7 +95,23 @@ void compute_skinning(skinning_structure& skinning,
         // TO DO ...
         // Compute skinning deformation
         // Change the following line to compute the deformed position from skinning relation
-        skinning.deformed.position[k] = skinning.rest_pose[k];
+        auto p0 = skinning.rest_pose[k];
+        auto alpha = skinning.influence[k];
+        auto position = mat4();
+        for (size_t i = 0; i < alpha.size(); i++)
+        {
+            auto bone = skeleton_current[alpha[i].joint];
+            auto tk = mat4::from_mat3_vec3(bone.r.matrix(), bone.p);
+            auto bone_0 = skeleton_rest_pose[alpha[i].joint];
+            auto tk0 = mat4::from_mat3_vec3(conjugate(bone_0.r).matrix(),
+                    -conjugate(bone_0.r).matrix() * bone_0.p);
+
+            position += alpha[i].weight * tk * tk0;
+        }
+        vec4 pt = position * vec4(p0[0], p0[1], p0[2], 1);
+
+        //skinning.deformed.position[k] = skinning.rest_pose[k];
+        skinning.deformed.position[k] = vec3(pt[0], pt[1], pt[2]);
     }
 }
 

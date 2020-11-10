@@ -12,11 +12,18 @@ using namespace vcl;
 void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_structure& , gui_structure& )
 {
     const float radius_body = 0.25f;
+    const float radius_head = 0.15f;
+    const float body_length = 1.5f;
     const float radius_arm = 0.05f;
     const float length_arm = 0.2f;
+    const float radius_beak = 0.05f;
+    const float beak_length = 0.1f;
 
     // The geometry of the body is a sphere
     mesh_drawable body = mesh_drawable( mesh_primitive_sphere(radius_body, {0,0,0}, 40, 40));
+    body.uniform.transform.scaling_axis = {1, 1, body_length};
+
+    mesh_drawable head = mesh_drawable(mesh_primitive_sphere(radius_head, {0, 0, 0}, 40, 40));
 
     // Geometry of the eyes: black spheres
     mesh_drawable eye = mesh_drawable(mesh_primitive_sphere(0.05f, {0,0,0}, 20, 20));
@@ -29,24 +36,36 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     // An elbow displayed as a sphere
     mesh_drawable elbow = mesh_primitive_sphere(0.055f);
 
+    mesh_drawable beak = mesh_drawable(mesh_primitive_cone(radius_beak, {0, 0, 0}, {0, 0, beak_length}));
+    beak.uniform.color = {1, 0.8, 0.2};
+    mesh_drawable wing = mesh_drawable(mesh_primitive_quad({0, 0, 0.3}, {0.4, 0, 0.15}, {0.4, 0, -0.15}, {0, 0, -0.3}));
+    mesh_drawable wing_tip = mesh_drawable(mesh_primitive_quad({0, 0, 0.15}, {0.3, 0, -0.1}, {0.3, 0, -0.1}, {0, 0, -0.15}));
+
     // Build the hierarchy:
     // Syntax to add element
     //   hierarchy.add(visual_element, element_name, parent_name, (opt)[translation, rotation])
     hierarchy.add(body, "body");
 
+    hierarchy.add(head, "head", "body", radius_body * vec3(0, 1/4.0f, 1.1f * body_length));
+
     // Eyes positions are set with respect to some ratio of the
-    hierarchy.add(eye, "eye_left", "body" , radius_body * vec3( 1/3.0f, 1/2.0f, 1/1.5f));
-    hierarchy.add(eye, "eye_right", "body", radius_body * vec3(-1/3.0f, 1/2.0f, 1/1.5f));
+    hierarchy.add(eye, "eye_left", "head" , radius_head * vec3( 1/1.5f, 1/2.5f, 1/1.5f));
+    hierarchy.add(eye, "eye_right", "head", radius_head * vec3(-1/1.5f, 1/2.5f, 1/1.5f));
+    hierarchy.add(beak, "beak", "head", radius_head * vec3(0, 0, 1));
 
     // Set the left part of the body arm: shoulder-elbow-arm
-    hierarchy.add(shoulder, "shoulder_left", "body", {-radius_body+0.05f,0,0}); // extremity of the spherical body
-    hierarchy.add(elbow, "elbow_left", "shoulder_left", {-length_arm,0,0});     // place the elbow the extremity of the "shoulder cylinder"
-    hierarchy.add(arm, "arm_bottom_left", "elbow_left");                        // the arm start at the center of the elbow
+    //hierarchy.add(shoulder, "shoulder_left", "body", {-radius_body+0.05f,0,0}); // extremity of the spherical body
+    //hierarchy.add(elbow, "elbow_left", "shoulder_left", {-length_arm,0,0});     // place the elbow the extremity of the "shoulder cylinder"
+    //hierarchy.add(arm, "arm_bottom_left", "elbow_left");                        // the arm start at the center of the elbow
 
     // Set the right part of the body arm: similar to the left part excepted a symmetry is applied along x direction for the shoulder
-    hierarchy.add(shoulder, "shoulder_right", "body",     {{radius_body-0.05f,0,0}, {-1,0,0, 0,1,0, 0,0,1}/*Symmetry*/ } );
-    hierarchy.add(elbow, "elbow_right", "shoulder_right", {-length_arm,0,0});
-    hierarchy.add(arm, "arm_bottom_right", "elbow_right");
+    //hierarchy.add(shoulder, "shoulder_right", "body",     {{radius_body-0.05f,0,0}, {-1,0,0, 0,1,0, 0,0,1}/*Symmetry*/ } );
+    //hierarchy.add(elbow, "elbow_right", "shoulder_right", {-length_arm,0,0});
+    //hierarchy.add(arm, "arm_bottom_right", "elbow_right");
+    hierarchy.add(wing, "wing_left", "body", {radius_body-0.05f,0,0});
+    hierarchy.add(wing_tip, "wing_tip_left", "wing_left", {0.4,0,0});
+    hierarchy.add(wing, "wing_right", "body", {-radius_body+0.05f,0,0});
+    hierarchy.add(wing_tip, "wing_tip_right", "wing_right", {0.4,0,0});
 
 
     // Set the same shader for all the elements
@@ -76,21 +95,26 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
     /** *************************************************************  **/
 
     // The body oscillate along the z direction
-    hierarchy["body"].transform.translation = {0,0,0.2f*(1+std::sin(2*3.14f*t))};
+    //hierarchy["body"].transform.translation = {0,0,0.2f*(1+std::sin(2*3.14f*t))};
 
     // Rotation of the shoulder around the y axis
-    mat3 const R_shoulder = rotation_from_axis_angle_mat3({0,1,0}, std::sin(2*3.14f*(t-0.4f)) );
+    mat3 const R_shoulder = rotation_from_axis_angle_mat3({0,0,1}, std::sin(2*3.14f*(t-0.4f)) );
     // Rotation of the arm around the y axis (delayed with respect to the shoulder)
-    mat3 const R_arm = rotation_from_axis_angle_mat3({0,1,0}, std::sin(2*3.14f*(t-0.6f)) );
+    mat3 const R_arm = rotation_from_axis_angle_mat3({0,0,1}, std::sin(2*3.14f*(t-0.6f)) );
     // Symmetry in the x-direction between the left/right parts
     mat3 const Symmetry = {-1,0,0, 0,1,0, 0,0,1};
 
     // Set the rotation to the elements in the hierarchy
-    hierarchy["shoulder_left"].transform.rotation = R_shoulder;
-    hierarchy["arm_bottom_left"].transform.rotation = R_arm;
+    //hierarchy["shoulder_left"].transform.rotation = R_shoulder;
+    //hierarchy["arm_bottom_left"].transform.rotation = R_arm;
 
-    hierarchy["shoulder_right"].transform.rotation = Symmetry*R_shoulder; // apply the symmetry
-    hierarchy["arm_bottom_right"].transform.rotation = R_arm; //note that the symmetry is already applied by the parent element
+    //hierarchy["shoulder_right"].transform.rotation = Symmetry*R_shoulder; // apply the symmetry
+    //hierarchy["arm_bottom_right"].transform.rotation = R_arm; //note that the symmetry is already applied by the parent element
+    hierarchy["wing_left"].transform.rotation = R_shoulder;
+    hierarchy["wing_tip_left"].transform.rotation = R_arm;
+
+    hierarchy["wing_right"].transform.rotation = Symmetry * R_shoulder;
+    hierarchy["wing_tip_right"].transform.rotation = R_arm;
 
     hierarchy.update_local_to_global_coordinates();
 

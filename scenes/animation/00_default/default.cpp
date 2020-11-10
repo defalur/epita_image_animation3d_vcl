@@ -20,7 +20,7 @@ void scene_model::setup_data(std::map<std::string, GLuint>& shaders, scene_struc
     plane.shader = shaders["mesh"];    // A default shader can be set as an attribute of the object (used when calling the draw function)
 
     // Create similarily a cylinder
-    cylinder = mesh_drawable(mesh_primitive_cylinder(0.2f, { 0,-1,0 }, { 0,1,0 }, 20, 20)); // Note that a mesh_drawable can be directly constructed from a mesh
+    /*cylinder = mesh_drawable(mesh_primitive_cylinder(0.2f, { 0,-1,0 }, { 0,1,0 }, 20, 20)); // Note that a mesh_drawable can be directly constructed from a mesh
     cylinder.uniform.color = { 0.8f,0.8f,1 }; // can set the color (R,G,B) used in the shader
     cylinder.shader = shaders["mesh"];      // Default shader for the cylinder
 
@@ -54,12 +54,41 @@ void scene_model::setup_data(std::map<std::string, GLuint>& shaders, scene_struc
     // **************************************** //
 
 
-
+    sphere = mesh_primitive_sphere();
+    sphere.shader = shaders["mesh"];*/
 
     // allow by default the display of helper visual frames
     gui.show_frame_worldspace = true;
     gui.show_frame_camera = true;
 
+    cone = mesh_primitive_cone(0.1f, {0,0.2f,0}, {0,0.4f,0});
+    cylinder = mesh_primitive_cylinder(0.03f, {0, 0, 0}, {0, 0.2f, 0});
+    const int N_cone = 100;
+    positions.resize(N_cone);
+    for (int k = 0; k < N_cone; k++)
+    {
+        float x = vcl::rand_interval(-2, 2);
+        float z = vcl::rand_interval(-2, 2);
+
+        vcl::vec3 pos = {x, -1, z};
+        int c = 0;
+        while (c++ < 100) {
+            bool valid = true;
+            x = vcl::rand_interval(-2, 2);
+            z = vcl::rand_interval(-2, 2);
+            pos = {x, -1, z};
+            for (int i = 0; i < N_cone; i++)
+            {
+                if (vcl::norm(pos - positions[i]) < 0.2f)
+                    valid = false;
+            }
+            if (valid)
+                break;
+        }
+        positions[k] = {x, -1, z};
+    }
+    cone.uniform.color = vec3(0, 0.6, 0);
+    cylinder.uniform.color = vec3(0.5, 0.25, 0.13);
 }
 
 
@@ -101,7 +130,7 @@ void scene_model::frame_draw(std::map<std::string, GLuint>& shaders, scene_struc
     // ********************************************* //
 
     // The cylinder is rotated around the axis (1,0,0), by an angle = time/2
-    const vec3 axis_of_rotation = { 1,0,0 };
+    /*const vec3 axis_of_rotation = { 1,0,0 };
     const float angle_of_rotation = time / 2.0f;
     // Creation of the 3x3 rotation matrix
     const mat3 rotation = rotation_from_axis_angle_mat3(axis_of_rotation, angle_of_rotation);
@@ -130,8 +159,22 @@ void scene_model::frame_draw(std::map<std::string, GLuint>& shaders, scene_struc
     curve.uniform.transform.rotation = rotation_from_axis_angle_mat3({ 0,0,1 }, time);
     draw(curve, scene.camera);
 
+    sphere.uniform.transform.scaling = 0.2f;
+    sphere.uniform.transform.translation = {-1, 1, -2};
+    sphere.uniform.color = vec3(1+std::cos(time), 1+std::sin(time), 2.0)/2.0f;
+    draw(sphere, scene.camera);
+    if (is_wireframe)
+        draw(sphere, scene.camera, shaders["wireframe"]);*/
 
-
+    const long N = positions.size();
+    for (long k = 0; k < N; k++)
+    {
+        float u = k/(N - 1);
+        cone.uniform.transform.translation = positions[k];
+        cylinder.uniform.transform.translation = positions[k];
+        draw(cone, scene.camera, shaders["mesh"]);
+        draw(cylinder, scene.camera, shaders["mesh"]);
+    }
 
 
 }
@@ -141,13 +184,13 @@ void scene_model::set_gui()
 {
     // Slider to set time scaling factor
     ImGui::SliderFloat("Time scale", &timer.scale, 0.05f /*min value*/, 4.0f /*max value*/);
+    ImGui::Checkbox("Wireframe", &is_wireframe);
 
     // Stop/Start time
     bool const stop = ImGui::Button("Stop"); ImGui::SameLine();
     bool const start = ImGui::Button("Start");
     if (stop)  timer.stop();
     if (start) timer.start();
-
 
 }
 

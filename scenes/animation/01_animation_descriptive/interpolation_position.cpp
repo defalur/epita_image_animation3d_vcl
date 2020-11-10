@@ -33,8 +33,8 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Set timer bounds
     // You should adapt these extremal values to the type of interpolation
-    timer.t_min = keyframes[0].t;                   // first time of the keyframe
-    timer.t_max = keyframes[keyframes.size()-1].t;  // last time of the keyframe
+    timer.t_min = keyframes[1].t;                   // first time of the keyframe
+    timer.t_max = keyframes[keyframes.size()-2].t;  // last time of the keyframe
     timer.t = timer.t_min;
 
     // Prepare the visual elements
@@ -62,7 +62,28 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     scene.camera.scale = 7.0f;
 }
 
+vcl::vec3 scene_model::cardinal_spline_interpolation(
+        float t,
+        float t0,
+        float t1,
+        float t2,
+        float t3,
+        const vcl::vec3& p0,
+        const vcl::vec3& p1,
+        const vcl::vec3& p2,
+        const vcl::vec3& p3)
+{
+    vcl::vec3 di = mu * (p2 - p0) / (t2 - t0);
+    vcl::vec3 d2 = mu * (p3 - p1) / (t3 - t1);
 
+    auto s = (t - t1) / (t2 - t1);
+    auto res = (2 * pow(s, 3) - 3 * pow(s, 2) + 1) * p1
+            + (pow(s, 3) - 2 * pow(s, 2) + s) * di
+            + (-2 * pow(s, 3) + 3 * pow(s, 2)) * p2
+            + (pow(s, 3) - pow(s, 2)) * d2;
+
+    return res;
+}
 
 
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& )
@@ -85,16 +106,26 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
 
     // Preparation of data for the linear interpolation
     // Parameters used to compute the linear interpolation
+    const float t0 = keyframes[idx-1].t; // = t_{i-1}
     const float t1 = keyframes[idx  ].t; // = t_i
-    const float t2 = keyframes[idx+1].t; // = t_{i+1}
+    const float t2 = keyframes[(idx+1) % N].t; // = t_{i+1}
+    const float t3 = keyframes[(idx+2) % N].t; // = t_{i+2}
 
+    const vec3& p0 = keyframes[idx-1].p; // = p_{i-1}
     const vec3& p1 = keyframes[idx  ].p; // = p_i
-    const vec3& p2 = keyframes[idx+1].p; // = p_{i+1}
+    const vec3& p2 = keyframes[(idx+1) % N].p; // = p_{i+1}
+    const vec3& p3 = keyframes[(idx+2) % N].p; // = p_{i+2}
+
 
 
 
     // Compute the linear interpolation here
-    const vec3 p = linear_interpolation(t,t1,t2,p1,p2);
+    //const vec3 p = linear_interpolation(t,t1,t2,p1,p2);
+    const vec3 p = cardinal_spline_interpolation(
+            t,
+            t0, t1, t2, t3,
+            p0, p1, p2, p3
+            );
 
     // Create and call a function cardinal_spline_interpolation(...) instead
     // ...

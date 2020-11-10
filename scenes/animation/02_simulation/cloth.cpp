@@ -6,6 +6,17 @@
 
 using namespace vcl;
 
+vec3 spring_force(const vec3& pi, const vec3& pj, float L0, float K)
+{
+    vec3 const pji = pj - pi;
+    float const L = norm(pji);
+    return K * (L - L0) * pji / L;
+}
+
+bool check_bounds(int u, int v, int dim)
+{
+    return u >= 0 and v >= 0 and u < dim and v < dim;
+}
 
 // Fill value of force applied on each particle
 // - Gravity
@@ -34,11 +45,55 @@ void scene_model::compute_forces()
     for(size_t k=0; k<N; ++k)
         force[k] = force[k]-mu*speed[k];
 
+    struct Pos
+    {
+        int x;
+        int y;
+    };
+
+    const Pos neighbours[] = {{-1, 0},
+                              {1, 0},
+                              {0, -1},
+                              {0, 1},
+                              {-1, -1},
+                              {-1, 1},
+                              {1, -1},
+                              {1, 1},
+                              {-2, 0},
+                              {2, 0},
+                              {0, -2},
+                              {0, 2}};
+
     // Springs
     for(int ku=0; ku<N_dim; ++ku) {
       for(int kv=0; kv<N_dim; ++kv) {
-          // To do ...
-          // Compute spring forces force(ku,kv) = ...
+          for (unsigned i = 0; i < 12; i++)
+          {
+              auto neighbour = neighbours[i];
+              if (not check_bounds(ku + neighbour.x, kv + neighbour.y, N_dim))
+              {
+                  continue;
+              }
+
+              if (neighbour.x != 0 and neighbour.y != 0)
+                  force[ku + kv * N_dim] += spring_force(position[ku + kv * N_dim],
+                                                     position[ku + neighbour.x + (kv + neighbour.y) * N_dim], L0 * sqrt(2), K);
+              else
+                  force[ku + kv * N_dim] += spring_force(position[ku + kv * N_dim],
+                                                         position[ku + neighbour.x + (kv + neighbour.y) * N_dim], L0 * (abs(neighbour.x) + abs(neighbour.y)), K);
+          }
+
+          //auto delta_u = 1;
+          //auto delta_v = 1;
+
+          //if (ku + delta_u >= N_dim)
+          //    delta_u = -1;
+          //if (kv + delta_v >= N_dim)
+          //    delta_v = -1;
+
+          //auto normal = normalize(cross(position[(ku + delta_u) + kv * N_dim], position[ku + (kv + delta_v) * N_dim]));
+          auto normal = normals[ku + kv * N_dim];
+          force[ku + kv * N_dim] += vec3(-0.001, 0, 0) * user_parameters.wind * fabs(dot(vec3(1, 0, 0), normal));
       }
     }
 }
@@ -49,6 +104,17 @@ void scene_model::collision_constraints()
 {
     // Handle collisions here (with the ground and the sphere)
     // ...
+    const size_t N = position.size();
+    for(size_t k=0; k<N; ++k) {
+        if (position[k].y < collision_shapes.ground_height)
+            position[k].y = collision_shapes.ground_height;
+        if (norm(position[k] - collision_shapes.sphere_p) < collision_shapes.sphere_r + 0.005f)
+        {
+            auto normal = normalize(position[k] - collision_shapes.sphere_p);
+            position[k] = normal * (collision_shapes.sphere_r + 0.005f) + collision_shapes.sphere_p;
+            speed[k] -= normal * dot(speed[k], normal);
+        }
+    }
 }
 
 
@@ -110,7 +176,7 @@ void scene_model::setup_data(std::map<std::string,GLuint>& shaders, scene_struct
     // Default value for simulation parameters
     user_parameters.K    = 100.0f;
     user_parameters.m    = 5.0f;
-    user_parameters.wind = 10.0f;
+    user_parameters.wind = 0.0f;
     user_parameters.mu   = 0.02f;
 
     // Set collision shapes

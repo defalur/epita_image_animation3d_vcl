@@ -19,6 +19,9 @@ struct scene_model : scene_base
 
     particle_element pA;
     particle_element pB;
+    particle_element pC;
+    std::vector<particle_element> particles;
+    unsigned k = 1;
     float L0;
 
 
