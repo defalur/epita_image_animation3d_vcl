@@ -36,6 +36,8 @@ struct scene_model : scene_base
     vcl::buffer2D<vcl::vec3> speed;
     vcl::buffer2D<vcl::vec3> force;
 
+    float radius;
+
     // Simulation parameters
     simulation_parameters_structure simulation_parameters; // parameters that user can control directly
     user_parameters_structure user_parameters;             // parameters adjusted with respect to mesh size (not controled directly by the user)

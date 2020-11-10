@@ -32,7 +32,7 @@ file(
     scenes/*.[ch]pp
     scenes/*.glsl
     )
-add_executable(pgm ${source_files})
+add_executable(pgm ${source_files} scenes/animation/02_simulation/trampoline.cpp scenes/animation/02_simulation/trampoline.h)
 
 
 if(UNIX)

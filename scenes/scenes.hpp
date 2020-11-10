@@ -12,3 +12,4 @@
 #include "scenes/animation/02_simulation/example_mass_spring.hpp"
 #include "scenes/animation/02_simulation/cloth.hpp"
 #include "scenes/animation/03_skinning/skinning.hpp"
+#include "scenes/animation/02_simulation/trampoline.h"
