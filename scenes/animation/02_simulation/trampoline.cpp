@@ -157,8 +157,9 @@ void scene_model::set_gui()
     ImGui::SliderFloat("Stiffness", &user_parameters.K, 1.0f, 400.0f, "%.2f s");
     ImGui::SliderFloat("Damping", &user_parameters.mu, 0.0f, 0.1f, "%.3f s");
     ImGui::SliderFloat("Mass", &user_parameters.m, 1.0f, 15.0f, "%.2f s");
-    ImGui::SliderFloat("Sphere Mass", &sphere_mass, 1.0f, 15.0f, "%.2f s");
+    ImGui::SliderFloat("Sphere Mass", &sphere_mass, 1.0f, 50.0f, "%.2f s");
     ImGui::SliderFloat("Wind", &user_parameters.wind, 0.0f, 400.0f, "%.2f s");
+    ImGui::SliderFloat("Cloth Bounciness", &bounciness, 0.0f, 1.0f, "%.2f s");
     ImGui::Checkbox("Add sphere", &gui_scene.add_sphere);
 
     ImGui::Checkbox("Wireframe",&gui_display_wireframe);
@@ -280,7 +281,7 @@ void scene_model::compute_forces()
 
 
 // Handle detection and response to collision with the shape described in "collision_shapes" variable
-void scene_model::collision_constraints()
+void scene_model::collision_constraints(float h)
 {
     // Handle collisions here (with the ground and the sphere)
     // ...
@@ -301,7 +302,7 @@ void scene_model::collision_constraints()
         }*/
 
     //}
-    float bounce = 0.9f;
+    float bounce = 0.5f;
     for (size_t i = 0; i < N; i++) {
         vec3& p1 = position[i];
         vec3& v1 = speed[i];
@@ -336,7 +337,9 @@ void scene_model::collision_constraints()
 
                 p1 += delta_norm * (delta_d / 2);
                 p2 -= delta_norm * (delta_d / 2);
-                force_collision[i] += delta_p * clamp(vcl::dot(delta_p, particle2.f), 0.f, 1.f);
+                force_collision[i] += delta_norm * norm(particle2.f)
+                                      * clamp(vcl::dot(delta_norm, normalize(particle2.f)),
+                                              0.f, 1.f) * bounciness;
             }
         }
     }
@@ -412,7 +415,7 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
         {
             compute_forces();
             numerical_integration(h);
-            collision_constraints();                 // Detect and solve collision with other shapes
+            collision_constraints(h);                 // Detect and solve collision with other shapes
 
             hard_constraints();                      // Enforce hard positional constraints
 

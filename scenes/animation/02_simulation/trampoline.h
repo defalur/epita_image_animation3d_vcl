@@ -68,7 +68,7 @@ struct scene_model : scene_base
 
     void initialize();
 
-    void collision_constraints();
+    void collision_constraints(float h);
 
     void compute_forces();
 
@@ -80,6 +80,7 @@ struct scene_model : scene_base
 
     vcl::mesh_drawable sphere;
     float sphere_mass = 5.0f;
+    float bounciness = 0.0f;
 
     vcl::timer_event timer;
 
