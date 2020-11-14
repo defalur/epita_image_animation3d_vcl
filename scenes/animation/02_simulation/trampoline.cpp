@@ -12,12 +12,10 @@ void scene_model::particle_collision()
     // Set forces
     const size_t N = particles.size();
 
-
+    // Set bounce
     const float bounce = 0.8f;
-    // Collisions with cube
 
     // Collisions between spheres
-    // ... to do
     for (size_t i = 0; i < N; i++) {
         particle_structure& particle1 = particles[i];
         vec3& p1 = particle1.p;
@@ -34,20 +32,16 @@ void scene_model::particle_collision()
             if (norm(delta_p) <= particle1.r + particle2.r)
             {
                 float rel_speed = norm(dot(normalize(v1), normalize(v2)) * (v1 + v2));
-                //std::cout << rel_speed << "\n";
                 vec3 delta_norm = normalize(delta_p);
                 if (rel_speed > 0.1f) {
                     auto norm_v1 = dot(v1, delta_norm);
                     auto norm_v2 = dot(v2, delta_norm);
-                    //std::cout << norm_v1 << " " << norm_v2 << "\n";
                     v1 -= delta_norm * (norm_v1 - norm_v2 * bounce);
                     v2 -= delta_norm * (norm_v2 - norm_v1 * bounce);
-                    //std::cout << dot(v1, delta_norm) << " " << dot(v2, delta_norm) << "\n";
                 } else
                 {
                     auto norm_v1 = dot(v1, delta_norm);
                     auto norm_v2 = dot(v2, delta_norm);
-                    //std::cout << norm_v1 << " " << norm_v2 << "\n";
                     v1 -= delta_norm * (norm_v1);
                     v2 -= delta_norm * (norm_v2);
                 }
@@ -214,7 +208,6 @@ void scene_model::compute_forces()
     for(size_t k=0; k<N; ++k)
         force[k] = m*g + force_collision[k];
 
-
     {
         const size_t N = particles.size();
         for (size_t k = 0; k < N; ++k)
@@ -264,15 +257,6 @@ void scene_model::compute_forces()
                                                            position[ku + neighbour.x + (kv + neighbour.y) * N_dim], L0 * (abs(neighbour.x) + abs(neighbour.y)), K);
             }
 
-            //auto delta_u = 1;
-            //auto delta_v = 1;
-
-            //if (ku + delta_u >= N_dim)
-            //    delta_u = -1;
-            //if (kv + delta_v >= N_dim)
-            //    delta_v = -1;
-
-            //auto normal = normalize(cross(position[(ku + delta_u) + kv * N_dim], position[ku + (kv + delta_v) * N_dim]));
             auto normal = normals[ku + kv * N_dim];
             force[ku + kv * N_dim] += vec3(-0.001, 0, 0) * user_parameters.wind * fabs(dot(vec3(1, 0, 0), normal));
         }
@@ -283,25 +267,12 @@ void scene_model::compute_forces()
 // Handle detection and response to collision with the shape described in "collision_shapes" variable
 void scene_model::collision_constraints(float h)
 {
-    // Handle collisions here (with the ground and the sphere)
-    // ...
     const size_t N = position.size();
     for (size_t i = 0; i < N; i++)
     {
         force_collision[i] = vec3(0.f,0.f,0.f);
     }
     const size_t H = particles.size();
-    //for(size_t k=0; k<N; ++k) {
-        /*if (position[k].y < collision_shapes.ground_height)
-            position[k].y = collision_shapes.ground_height;
-        if (norm(position[k] - collision_shapes.sphere_p) < collision_shapes.sphere_r + 0.005f)
-        {
-            auto normal = normalize(position[k] - collision_shapes.sphere_p);
-            position[k] = normal * (collision_shapes.sphere_r + 0.005f) + collision_shapes.sphere_p;
-            speed[k] -= normal * dot(speed[k], normal);
-        }*/
-
-    //}
     float bounce = 0.5f;
     for (size_t i = 0; i < N; i++) {
         vec3& p1 = position[i];
@@ -316,20 +287,16 @@ void scene_model::collision_constraints(float h)
             if (norm(delta_p) <= particle2.r + 0.01f)
             {
                 float rel_speed = norm(dot(normalize(v1), normalize(v2)) * (v1 + v2));
-                //std::cout << rel_speed << "\n";
                 vec3 delta_norm = normalize(delta_p);
                 if (rel_speed > 0.01f) {
                     auto norm_v1 = dot(v1, delta_norm);
                     auto norm_v2 = dot(v2, delta_norm);
-                    //std::cout << norm_v1 << " " << norm_v2 << "\n";
                     v1 -= delta_norm * (norm_v1 - norm_v2 * bounce);
                     v2 -= delta_norm * (norm_v2 - norm_v1 * bounce);
-                    //std::cout << dot(v1, delta_norm) << " " << dot(v2, delta_norm) << "\n";
                 } else
                 {
                     auto norm_v1 = dot(v1, delta_norm);
                     auto norm_v2 = dot(v2, delta_norm);
-                    //std::cout << norm_v1 << " " << norm_v2 << "\n";
                     v1 -= delta_norm * (norm_v1);
                     v2 -= delta_norm * (norm_v2);
                 }
@@ -397,8 +364,6 @@ void scene_model::initialize()
 void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_structure& scene, gui_structure& gui)
 {
     const float dt = timer.update();
-    //float dt = 0.02f * timer.scale;
-    //timer.update();
     set_gui();
 
     create_new_particle();
@@ -424,14 +389,11 @@ void scene_model::frame_draw(std::map<std::string,GLuint>& shaders, scene_struct
         }
     }
 
-
     cloth.update_position(position.data);
     cloth.update_normal(normals.data);
 
     display_elements(shaders, scene, gui);
     display_particles(scene);
-
-    //draw(borders, scene.camera);
 
     {
         for (size_t i = 0; i < particles.size(); i++)
@@ -505,8 +467,6 @@ void scene_model::display_elements(std::map<std::string,GLuint>& shaders, scene_
         draw(sphere, scene.camera, shaders["mesh"]);
     }
 
-    // Display ground
-    //draw(ground, scene.camera);
     glBindTexture(GL_TEXTURE_2D, scene.texture_white);
 }
 
@@ -552,8 +512,6 @@ void scene_model::detect_simulation_divergence()
             timer.stop();
         }
     }
-
 }
-
 
 #endif

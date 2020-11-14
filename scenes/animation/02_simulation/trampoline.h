@@ -133,9 +133,4 @@ struct scene_model : scene_base
     GLuint shader_mesh;
 };
 
-
-
-
-
-
 #endif
